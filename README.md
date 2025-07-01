@@ -4,7 +4,7 @@ Ce projet est une page HTML unique et autonome qui sert de bibliothèque interac
 
 ## But du script
 
-Le fichier `Prompt_Mobile.html` contient une interface web conviviale pour naviguer, visualiser et copier une variété de prompts. Les fonctionnalités incluent :
+Le fichier `index.html` contient une interface web conviviale pour naviguer, visualiser et copier une variété de prompts. Les fonctionnalités incluent :
 
 *   **Catégorisation :** Les prompts sont organisés en catégories thématiques (Extraction, Analyse, Génération de contenu, etc.).
 *   **Interface Pliable :** L'utilisateur peut déplier et replier les catégories et les prompts pour une navigation claire.
@@ -15,4 +15,4 @@ Le fichier `Prompt_Mobile.html` contient une interface web conviviale pour navig
 
 Ce script est déployé via GitHub Pages et est accessible à l'adresse suivante :
 
-[https://h1sb3r.github.io/Prompt_Mobile/Prompt_Mobile.html](https://h1sb3r.github.io/Prompt_Mobile/Prompt_Mobile.html)
+[https://h1sb3r.github.io/Prompt_Mobile/](https://h1sb3r.github.io/Prompt_Mobile/)
