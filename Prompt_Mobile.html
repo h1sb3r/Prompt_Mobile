@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bibliothèque de Prompts Interactifs</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --text-color: #2d3748; /* A dark grey, softer than black */
+            --primary-color: #1a202c;
+            --secondary-color: #718096;
+            --accent-color: #3b82f6; /* A modern blue */
+            --border-color: #e2e8f0;
+            --line-color: #cbd5e1;
+            --modal-bg: #ffffff;
+            --modal-overlay: rgba(0, 0, 0, 0.6);
+            --code-bg: #1a202c;
+            --code-text: #e2e8f0;
+            --font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            padding: 2rem 1.5rem;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 3rem;
+            color: var(--primary-color);
+            font-weight: 600;
+            font-size: 2.25rem;
+        }
+
+        /* --- Main Library Structure & Mind Map Lines --- */
+        #prompt-library {
+            list-style-type: none;
+        }
+
+        #prompt-library ul {
+            list-style-type: none;
+            padding-left: 28px; /* Indentation for nested lists */
+            position: relative;
+        }
+
+        /* Vertical connecting line */
+        #prompt-library ul::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 1px;
+            background-color: var(--line-color);
+        }
+        
+        #prompt-library li {
+            position: relative;
+        }
+
+        /* Horizontal connecting line */
+        #prompt-library li::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 18px; 
+            width: 12px;
+            height: 1px;
+            background-color: var(--line-color);
+        }
+
+        /* Remove lines for top-level list */
+        #prompt-library > .category-item {
+             padding-left: 0;
+        }
+        #prompt-library > .category-item::before {
+            display: none;
+        }
+         #prompt-library > .category-item > .category-title + .prompt-list::before {
+             left: 10px;
+        }
+
+
+        /* --- Collapsible Elements --- */
+        .collapsible {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 4px 0;
+            font-weight: 500;
+        }
+
+        .collapsible:hover {
+            color: var(--accent-color);
+        }
+
+        .collapsible .indicator {
+            color: var(--secondary-color);
+            font-family: monospace;
+            font-size: 1.2rem;
+            line-height: 1;
+            width: 1em;
+            text-align: center;
+            transition: transform 0.2s ease;
+        }
+        .collapsible.active .indicator {
+            color: var(--text-color);
+        }
+        
+        .collapsed-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease-in-out;
+        }
+
+        .category-title {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+            font-weight: 600;
+        }
+        
+        .prompt-header {
+            font-size: 1.1rem;
+        }
+
+        .prompt-icon {
+            font-size: 1.2rem;
+        }
+
+        .prompt-details {
+            padding-left: 45px; /* Aligns with text, past the indicator and icon */
+            margin-top: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .prompt-details p {
+            margin-bottom: 0.75rem;
+            color: var(--secondary-color);
+            font-size: 0.95rem;
+        }
+        .prompt-details .summary {
+            font-style: italic;
+        }
+        .prompt-details .comment {
+            font-size: 0.9rem;
+        }
+
+        .versions-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 1rem;
+        }
+
+        .version-btn {
+            background-color: var(--accent-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s ease, transform 0.1s ease;
+        }
+
+        .version-btn:hover {
+            background-color: #2563eb;
+        }
+        .version-btn:active {
+            transform: scale(0.98);
+        }
+
+        /* --- Modal Styling --- */
+        .modal-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: var(--modal-overlay);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s ease, visibility 0s 0.3s;
+            z-index: 1000;
+            padding: 1rem;
+        }
+        .modal-backdrop.visible {
+            opacity: 1;
+            visibility: visible;
+            transition: opacity 0.3s ease, visibility 0s 0s;
+        }
+        
+        .modal-content {
+            background-color: var(--modal-bg);
+            padding: 1.5rem 2rem;
+            border-radius: 8px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 800px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            transform: scale(0.95);
+            transition: transform 0.3s ease;
+        }
+
+        .modal-backdrop.visible .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-content h2 {
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        
+        .modal-body {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 1.5rem;
+        }
+
+        .modal-body pre {
+            background-color: var(--code-bg);
+            color: var(--code-text);
+            padding: 1rem;
+            border-radius: 6px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 0.9rem;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 1rem;
+            flex-shrink: 0;
+        }
+        
+        .modal-btn {
+            padding: 10px 20px;
+            border-radius: 6px;
+            border: 1px solid transparent;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        #copy-btn {
+            background-color: var(--accent-color);
+            color: white;
+        }
+        #copy-btn:hover {
+            background-color: #2563eb;
+        }
+
+        #close-modal-btn {
+            background-color: transparent;
+            color: var(--secondary-color);
+            border: 1px solid var(--border-color);
+        }
+        #close-modal-btn:hover {
+            background-color: var(--border-color);
+            color: var(--primary-color);
+        }
+
+        /* --- Responsive Design --- */
+        @media (max-width: 768px) {
+            body {
+                padding: 1.5rem 1rem;
+            }
+            h1 {
+                font-size: 1.8rem;
+                margin-bottom: 2rem;
+            }
+            .category-title {
+                font-size: 1.3rem;
+            }
+            .prompt-header {
+                font-size: 1rem;
+            }
+            #prompt-library ul {
+                padding-left: 20px;
+            }
+             #prompt-library li::before {
+                width: 4px;
+                top: 16px;
+            }
+            .modal-content {
+                padding: 1.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Bibliothèque de Prompts Interactifs</h1>
+        <ul id="prompt-library">
+            <!-- Content will be dynamically generated by JavaScript -->
+        </ul>
+    </div>
+
+    <!-- Modal Structure -->
+    <div id="modal-backdrop" class="modal-backdrop">
+        <div id="modal-content" class="modal-content">
+            <h2 id="modal-title">Titre du Prompt</h2>
+            <div class="modal-body">
+                <pre><code id="modal-code"></code></pre>
+            </div>
+            <div class="modal-actions">
+                <button id="copy-btn" class="modal-btn">Copier le Prompt</button>
+                <button id="close-modal-btn" class="modal-btn">Fermer</button>
+            </div>
+        </div>
+    </div>
+
+<script>
+const promptsData = [
+  {
+    "category": "1. Extraction & Synthèse de Document",
+    "prompts": [
+      {
+        "id": "synth_tdm",
+        "icon": "📑",
+        "title": "Génération de Table des Matières",
+        "summary": "Analyse un texte pour générer une table des matières hiérarchique et numérotée.",
+        "comment": "Parfait pour structurer de longs documents, des rapports ou des chapitres de livre avant une lecture approfondie.",
+        "versions": [
+          {
+            "id": "synth_tdm_v1",
+            "name": "Standard",
+            "content": "**Mission :** Analyser le texte fourni et générer une table des matières hiérarchique et numérotée.\n\n**Règles Impératives :**\n1.  **Langue :** La sortie doit être exclusivement en français.\n2.  **Traduction :** Traduire fidèlement en français tous les titres et sous-titres s'ils sont dans une autre langue.\n3.  **Structure :** Respecter la hiérarchie du document (chapitres, sections) et utiliser une numérotation logique (ex: 1., 1.1, 1.2).\n4.  **Contenu :** Les entrées de la table des matières doivent correspondre uniquement aux titres et sous-titres identifiés dans le texte."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "category": "2. Analyse Approfondie & Stratégique",
+    "prompts": [
+      {
+        "id": "custom_analysis",
+        "icon": "🧠",
+        "title": "Analyse sur Mesure (Plan d'Analyse)",
+        "summary": "Génère un plan d'analyse personnalisé, puis l'exécute ou le fournit comme un prompt autonome.",
+        "meta": "<strong>Tags :</strong> <code>méta-prompt</code>, <code>analyse</code>, <code>expertise</code>, <code>critique</code>",
+        "comment": "L'outil ultime pour des analyses profondes. La version 'Analyse Directe' est un tout-en-un. La version 'Générateur de Prompt' crée un outil réutilisable.",
+        "versions": [
+          {
+            "id": "custom_analysis_direct",
+            "name": "Analyse Directe (Plan + Exécution)",
+            "content": "**Rôle :** Expert en analyse de documents.\n\n**Mission :** Fournir une analyse approfondie et structurée du document soumis, en deux étapes consécutives. La réponse finale doit être rédigée intégralement en français et se baser strictement sur le document.\n\n**Processus Opérationnel :**\n\n**Étape 1 : Création du Plan d'Analyse sur Mesure**\n1.  **Analyse Préliminaire :** Identifie la nature du document (rapport, article, etc.), son public et son objectif.\n2.  **Génération du Plan :** Crée et affiche un plan d'analyse détaillé, structuré comme suit :\n    *   **1. Identification et Contexte :** (Sujet, Auteur, Thèse centrale)\n    *   **2. Analyse des Composants Clés :** (Méthodologie, Analyse des données/visuels, Arguments principaux)\n    *   **3. Synthèse et Interprétation :** (Lien thèse-preuves, Implications)\n    *   **4. Évaluation et Perspectives :** (Limites, Questions ouvertes)\n\n**Étape 2 : Exécution de l'Analyse**\nEn suivant le plan que tu viens de générer, rédige l'analyse complète et détaillée du document, en répondant à chaque point du plan de manière exhaustive."
+          },
+          {
+            "id": "custom_analysis_generator",
+            "name": "Générateur de Prompt",
+            "content": "**Rôle :** Méta-analyseur expert en conception de prompts.\n\n**Mission :** Créer un prompt d'analyse autonome, spécifique et performant pour le document fourni, en suivant un processus en deux phases.\n\n**Processus de Création :**\n\n**Phase 1 : Analyse Préliminaire (Processus Interne)**\n*Analyse silencieusement le document pour en extraire l'ADN :*\n1.  **Nature et Objectif :** Forme (article, rapport), public (expert, grand public), but (informer, persuader).\n2.  **Structure Logique :** Flux argumentatif (chronologique, thématique), décomposition des sections.\n3.  **Concepts Clés :** Vocabulaire spécifique, données fondamentales, acronymes, exemples récurrents.\n4.  **Thèse Centrale :** Argument principal explicite et message implicite sous-jacent.\n\n**Phase 2 : Construction de l'Invite Cible (Livrable)**\n*En te basant STRICTEMENT sur ton analyse, rédige un nouveau prompt complet et autonome. Ce prompt doit :*\n1.  **Être Autonome :** Ne faire aucune référence à ce processus de création.\n2.  **Guider l'IA :** Fournir un rôle, une mission claire, et un format de réponse structuré.\n3.  **Être Spécifique :** Inclure des questions ciblées basées sur les concepts et la structure que tu as identifiés (ex: \"Expliquez le concept de 'X' tel que défini par l'auteur\", \"Analysez le graphique de la page 3\", \"Quelle est la relation entre l'argument A et la conclusion B ?\").\n4.  **Imposer des Contraintes :** Spécifier la langue, le ton, et l'obligation de se baser uniquement sur le texte source.\n\n**Livrable Final :** Le texte complet du nouveau prompt."
+          }
+        ]
+      },
+      {
+        "id": "analysis_video_strategic",
+        "icon": "📈",
+        "title": "Analyse Thématique par Idée-Clé",
+        "summary": "Décompose un texte en idées individuelles et les analyse chronologiquement dans un tableau, en utilisant un mot-clé unique pour chaque idée.",
+        "meta": "<strong>Tags :</strong> <code>analyse stratégique</code>, <code>thématique</code>, <code>esprit critique</code>, <code>tableau</code>",
+        "comment": "Extrêmement puissant pour déconstruire un argumentaire, une conférence ou un cours. Le résultat est une 'colonne vertébrale' des idées du document, prête à être exploitée.",
+        "versions": [
+          {
+            "id": "analysis_video_strategic_v1",
+            "name": "Standard",
+            "content": "**Rôle :** Analyste stratégique et critique de contenu.\n\n**Mission :** Décomposer le contenu fourni (transcription, article, etc.) en une séquence d'idées distinctes. Pour chaque idée, produire une analyse critique et stratégique sous forme de tableau.\n\n**Méthodologie Opérationnelle :**\n\n**1. Parcours et Identification des Idées :**\n   *   Parcours le texte de manière strictement chronologique, du début à la fin.\n   *   Identifie chaque idée, argument, affirmation ou point d'information distinct. La granularité est essentielle : une nouvelle ligne dans le tableau doit être créée pour chaque nouveau concept abordé, même s'il est court.\n   *   Ignore complètement les horodatages pour la structuration du tableau. L'analyse est purement thématique et chronologique.\n\n**2. Remplissage du Tableau d'Analyse :**\n   *   Pour chaque idée identifiée, remplis les colonnes du tableau en respectant les consignes suivantes :\n     *   **Colonne 1 (Idée-Clé) :** Synthétise l'idée centrale de la ligne en **un à trois mots-clés percutants**. Ce mot-clé doit servir de titre unique et évocateur pour le point analysé. Exemples : `Coûts des GPU`, `Stratégie Open Source`, `Rétention des Talents`.\n     *   **Colonne 2 (Sujet Clé) :** Résume le thème principal ou l'affirmation centrale de cette idée en une seule phrase concise.\n     *   **Colonne 3 (Analyse & Commentaire Stratégique) :** Ne te contente pas de résumer. Apporte une plus-value en expliquant l'importance de ce point. (Pourquoi est-ce pertinent ? Quelle est l'implication business/technique/stratégique ? Est-ce un point de rupture ? Une faiblesse d'argumentation ?).\n     *   **Colonne 4 (Question Pertinente / Point à creuser) :** Formule une question ouverte et intelligente qui pousse à la réflexion ou suggère une piste d'approfondissement concrète.\n\n**Format de Sortie Impératif :**\n*   La réponse finale doit être **exclusivement** un tableau Markdown structuré comme suit. N'ajoute aucune introduction ou conclusion en dehors du tableau.\n\n| Idée-Clé | Sujet Clé | Analyse & Commentaire Stratégique | Question Pertinente / Point à creuser |\n| :--- | :--- | :--- | :--- |\n| [Contenu de la cellule] | [Contenu de la cellule] | [Contenu de la cellule] | [Contenu de la cellule] |"
+          }
+        ]
+      },
+      {
+        "id": "analysis_prospective",
+        "icon": "🔮",
+        "title": "Analyse Prospective",
+        "summary": "Décrypte les thèses d'un document pour projeter leurs implications futures et impacts.",
+        "meta": "<strong>Tags :</strong> <code>prospective</code>, <code>stratégie</code>, <code>futur</code>, <code>analyse d'impact</code>",
+        "comment": "Ne résume pas le passé, mais utilise le document comme un tremplin pour imaginer l'avenir. Excellent pour les sessions de brainstorming stratégique.",
+        "versions": [
+          {
+            "id": "analysis_prospective_v1",
+            "name": "Standard",
+            "content": "**Rôle :** Analyste stratégique expert en prospective.\n\n**Mission :** Analyser le document ci-joint pour en extraire exclusivement les implications futures, les opportunités et les défis à venir.\n\n**Méthodologie en 2 Étapes :**\n\n**1. Décryptage des Thèses Fondamentales :**\n   *   Identifie les concepts, principes et changements de paradigme présentés dans le texte. Quels sont les messages clés qui redéfinissent l'avenir selon ce document ?\n\n**2. Projection des Impacts Futurs :**\n   *   Pour chaque thèse identifiée, projette ses conséquences concrètes en répondant aux questions suivantes :\n     *   **Changements Radicaux :** Qu'est-ce que cela va transformer dans les secteurs concernés ?\n     *   **Nouvelles Opportunités :** Quelles possibilités (technologiques, économiques, sociales) cela crée-t-il ?\n     *   **Modèles Obsolètes :** Quels défis ou modèles existants cela remet-il en cause ?\n     *   **Compétences Critiques :** Quelles nouvelles compétences ou infrastructures deviendront essentielles ?\n\n**Contraintes Strictes :**\n*   **Focus Futur :** Concentre-toi uniquement sur les implications futures. Ignore toute information historique ou biographique non essentielle.\n*   **Structure Thématique :** Organise ton analyse en grands axes ou domaines d'impact.\n\n**Livrable :** Une analyse prospective complète, structurée et entièrement focalisée sur l'avenir tel qu'il découle des idées du document."
+          }
+        ]
+      },
+      {
+        "id": "analysis_critical",
+        "icon": "🕵️",
+        "title": "Vérification et Analyse Critique",
+        "summary": "Agit en analyste pour vérifier des faits, analyser le contexte et évaluer les implications.",
+        "meta": "<strong>Tags :</strong> <code>fact-checking</code>, <code>analyse critique</code>, <code>investigation</code>",
+        "comment": "Ce prompt est particulièrement puissant avec un outil de recherche internet activé pour vérifier les affirmations et trouver des sources contradictoires.",
+        "versions": [
+          {
+            "id": "analysis_critical_v1",
+            "name": "Standard",
+            "content": "**Rôle :** Analyste de renseignement et journaliste d'investigation.\n\n**Mission :** Examiner l'information fournie, évaluer sa validité avec un esprit critique, et produire une analyse stratégique complète.\n\n**Processus en 4 Étapes :**\n\n**Étape 1 : Déconstruction et Vérification**\n1.  **Isoler** l'affirmation centrale à vérifier.\n2.  **Identifier** les personnes, organisations et sources mentionnées.\n3.  **Corroborer** l'information via des sources primaires et au moins 3 sources secondaires fiables et indépendantes.\n4.  **Rechercher** activement des informations contradictoires, des démentis ou des analyses alternatives.\n\n**Étape 2 : Synthèse des Faits**\n*   Résume de manière objective ce qui est factuellement avéré, ce qui est rapporté mais non confirmé, et ce qui est contesté.\n\n**Étape 3 : Analyse du Contexte et des Biais**\n1.  **Contexte :** Dans quel contexte plus large cette information s'inscrit-elle (politique, économique, concurrentiel) ?\n2.  **Biais :** Analyse les biais potentiels de la source originale (intention de nuire, de promouvoir, etc.).\n3.  **Sources :** Évalue la crédibilité et la fiabilité des sources utilisées.\n\n**Étape 4 : Analyse Stratégique et Implications**\n1.  **Conséquences :** Quelles sont les implications concrètes si l'information est vraie ? Pour qui ?\n2.  **Scénarios :** Quels sont les scénarios probables découlant de cette information ?\n3.  **Recommandations :** Quelles actions ou vigilances sont recommandées ?\n\n**Livrable Final :** Un rapport d'analyse structuré en 4 parties, correspondant aux étapes ci-dessus."
+          }
+        ]
+      },
+      {
+        "id": "analysis_study_guide",
+        "icon": "🎓",
+        "title": "Analyse Académique (Guide d'Étude)",
+        "summary": "Génère un guide d'étude complet (TDM, résumé, concepts, etc.) à partir d'un texte.",
+        "meta": "<strong>Tags :</strong> <code>analyse académique</code>, <code>guide d'étude</code>, <code>synthèse</code>, <code>critique littéraire</code>",
+        "comment": "Particulièrement efficace sur des textes longs et denses comme des essais, des chapitres de livre ou des articles de fond pour en extraire la substance.",
+        "versions": [
+          {
+            "id": "analysis_study_guide_v1",
+            "name": "Standard",
+            "content": "**Rôle :** Analyste littéraire et académique expert.\n\n**Mission :** Créer un guide d'étude exhaustif et structuré à partir du texte fourni.\n\n**Livrable Attendu (structure à suivre impérativement) :**\n\n**1. Table des Matières Détaillée**\n*   Crée une table des matières hiérarchisée. Pour chaque chapitre ou grande section, liste les 3-5 sous-thèmes principaux.\n\n**2. Synthèse Globale**\n*   **a. Résumé Exécutif (3-5 phrases) :** Thèse centrale et objectif de l'œuvre.\n*   **b. Résumé Détaillé (~500 mots) :** Déroulé logique des arguments, des idées et des conclusions.\n\n**3. Concepts et Arguments Clés**\n*   **a. Concepts Fondamentaux :** Identifie les 5-10 concepts clés. Pour chacun, fournis une définition concise basée sur le texte.\n*   **b. Thèses Principales :** Liste les 3-5 arguments majeurs de l'auteur et la logique qui les soutient.\n\n**4. Personnages et Entités Clés**\n*   Liste les personnages ou entités importantes et décris leur rôle en une phrase.\n\n**5. Thèmes et Ton**\n*   **a. Thèmes Majeurs :** Identifie 3-5 thèmes récurrents.\n*   **b. Ton de l'Auteur :** Décris le ton (académique, exploratoire, humoristique, etc.) et justifie avec un exemple.\n\n**6. Citations Marquantes**\n*   Extrais 5 citations clés et explique brièvement leur signification dans le contexte de l'œuvre."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "category": "3. Traitement & Génération de Contenu",
+    "prompts": [
+      {
+        "id": "gen_article_from_outline",
+        "icon": "✍️",
+        "title": "Générateur d'Article (Plan Détaillé)",
+        "summary": "Prend un plan structuré (titres, puces) et le développe en un article complet et fluide.",
+        "meta": "<strong>Tags :</strong> <code>rédaction</code>, <code>article</code>, <code>génération de contenu</code>",
+        "comment": "Idéal pour transformer rapidement des notes ou un brainstorming en un premier jet d'article cohérent.",
+        "versions": [
+          {
+            "id": "gen_article_from_outline_v1",
+            "name": "Standard",
+            "content": "**Rôle :** Rédacteur professionnel expert.\n\n**Mission :** Transformer le plan détaillé fourni ci-dessous en un article riche, fluide et engageant. Tu dois étoffer les idées, pas simplement les lister.\n\n**Instructions de Rédaction :**\n1.  **Structure :** Respecte scrupuleusement la structure du plan. Le titre principal et les titres de section doivent être repris tels quels.\n2.  **Développement :**\n    *   Chaque point de liste (puce) du plan doit être développé en phrases complètes et explications détaillées.\n    *   Rédige une introduction captivante qui présente le sujet et une conclusion solide qui résume les points clés.\n    *   Assure des transitions logiques et fluides entre chaque paragraphe et section.\n3.  **Ton et Style :** Adopte un ton [préciser le ton : ex: informatif, professionnel, persuasif, décontracté...]. Le texte final doit être intégralement en français, clair et accessible.\n4.  **Fidélité :** N'introduis pas de nouveaux concepts majeurs qui ne sont pas présents dans le plan initial. Ton rôle est de développer, pas de réinventer.\n\n**Exécute maintenant cette mission en te basant sur le plan suivant.**"
+          }
+        ]
+      },
+      {
+        "id": "gen_translation",
+        "icon": "🌐",
+        "title": "Traduction de Transcriptions",
+        "summary": "Transforme une transcription anglaise brute en un texte français propre, cohérent et fluide.",
+        "comment": "Idéal pour nettoyer les transcriptions automatiques (YouTube, Otter.ai, etc.). La version avec horodatage est utile pour le sous-titrage vidéo.",
+        "versions": [
+          {
+            "id": "gen_translation_no_ts",
+            "name": "Sans Horodatage",
+            "content": "**Rôle :** Éditeur-Traducteur Expert\n\n**Mission :** Transformer une transcription anglaise brute (généralement issue d'un outil automatique) en un texte français parfaitement édité, fluide et cohérent. L'objectif n'est pas une traduction littérale, mais une restauration de l'intention et de la clarté du discours original.\n\n**Processus Opérationnel Impératif :**\n\n**Étape 1 : Analyse Silencieuse du Texte Source**\n*Avant de traduire, analyse la transcription pour en diagnostiquer les imperfections et comprendre son essence.*\n1.  **Identifier les Scories :** Repère les erreurs de transcription (mots mal transcrits, ponctuation erronée), les répétitions, les faux départs, et les mots de remplissage envahissants (ex: \"like\", \"you know\", \"um\").\n2.  **Déterminer le Contexte & Ton :** Identifie la nature du discours (interview, conférence, conversation) et le ton (formel, informel, technique) pour adapter le style.\n3.  **Isoler la Terminologie Clé :** Repère les termes techniques, le jargon ou les noms propres qui nécessiteront une traduction soignée et cohérente.\n4.  **Comprendre la Structure :** Note la présence d'intervenants distincts (ex: `Speaker 1:`).\n\n**Étape 2 : Traduction Éditoriale vers le Français**\n*En te fondant sur ton analyse, produis la traduction finale en appliquant rigoureusement les règles suivantes :*\n1.  **Priorité à la Clarté :** Si une phrase est confuse à cause d'une mauvaise transcription, restitue son sens le plus probable en te basant sur le contexte. **Ta priorité est de rendre l'intention du locuteur, pas les mots exacts de la transcription.**\n2.  **Nettoyage Systématique :**\n    *   **Supprime** tous les mots de remplissage, hésitations et faux départs qui n'apportent aucune valeur. Transforme les phrases orales hachées en prose écrite fluide.\n    *   Gère les passages inaudibles en les marquant `[inaudible]` ou en les omettant si cela ne nuit pas à la compréhension.\n3.  **Traduction Idiomatique :**\n    *   Produis une traduction naturelle en français, en évitant les calques de l'anglais.\n    *   Traite la terminologie clé avec précision, en utilisant les équivalents français consacrés ou en conservant le terme anglais si c'est l'usage (ex: \"machine learning\").\n4.  **Formatage et Contraintes :**\n    *   Traduis les identifiants d'intervenants (ex: \"Speaker 1:\" devient \"Intervenant 1 :\").\n    *   **CONTRAINTE ABSOLUE : N'inclus AUCUN horodatage (timestamp) dans la sortie finale. Tout élément comme `[00:12:34]` ou `0:12` doit être impérativement supprimé.**\n\n**Livrable Final :**\nProduis un texte unique, intégralement en français, propre et bien ponctué. Le résultat doit se lire comme un script édité, et non comme une transcription brute."
+          },
+          {
+            "id": "gen_translation_with_ts",
+            "name": "Avec Horodatage",
+            "content": "**Rôle :** Éditeur-Traducteur Expert\n\n**Mission :** Transformer une transcription anglaise brute (généralement issue d'un outil automatique) en un texte français parfaitement édité, fluide et cohérent, tout en préservant les horodatages.\n\n**Processus Opérationnel Impératif :**\n\n**Étape 1 : Analyse Silencieuse du Texte Source**\n*Avant de traduire, analyse la transcription pour en diagnostiquer les imperfections et comprendre son essence.*\n1.  **Identifier les Scories :** Repère les erreurs de transcription (mots mal transcrits, ponctuation erronée), les répétitions, les faux départs, et les mots de remplissage envahissants (ex: \"like\", \"you know\", \"um\").\n2.  **Déterminer le Contexte & Ton :** Identifie la nature du discours (interview, conférence, conversation) et le ton (formel, informel, technique) pour adapter le style.\n3.  **Isoler la Terminologie Clé :** Repère les termes techniques, le jargon ou les noms propres qui nécessiteront une traduction soignée et cohérente.\n4.  **Comprendre la Structure :** Note la présence d'intervenants distincts (ex: `Speaker 1:`) et la position des horodatages.\n\n**Étape 2 : Traduction Éditoriale vers le Français**\n*En te fondant sur ton analyse, produis la traduction finale en appliquant rigoureusement les règles suivantes :*\n1.  **Priorité à la Clarté :** Si une phrase est confuse à cause d'une mauvaise transcription, restitue son sens le plus probable en te basant sur le contexte. **Ta priorité est de rendre l'intention du locuteur, pas les mots exacts de la transcription.**\n2.  **Nettoyage Systématique :**\n    *   **Supprime** tous les mots de remplissage, hésitations et faux départs qui n'apportent aucune valeur. Transforme les phrases orales hachées en prose écrite fluide.\n    *   Gère les passages inaudibles en les marquant `[inaudible]` ou en les omettant si cela ne nuit pas à la compréhension.\n3.  **Traduction Idiomatique :**\n    *   Produis une traduction naturelle en français, en évitant les calques de l'anglais.\n    *   Traite la terminologie clé avec précision.\n4.  **Formatage et Contraintes :**\n    *   Traduis les identifiants d'intervenants (ex: \"Speaker 1:\" devient \"Intervenant 1 :\").\n    *   **CONTRAINTE ABSOLUE : Préserve et conserve TOUS les horodatages (timestamps) exactement à leur position d'origine dans le texte.**\n\n**Livrable Final :**\nProduis un texte unique, intégralement en français, propre, bien ponctué et contenant tous les horodatages originaux."
+          }
+        ]
+      },
+      {
+        "id": "gen_summary_card",
+        "icon": "📝",
+        "title": "Fiche Synthétique Standardisée",
+        "summary": "Génère une fiche de synthèse en recherchant les métadonnées manquantes en ligne.",
+        "meta": "<strong>Tags :</strong> <code>recherche internet</code>, <code>fiche de synthèse</code>, <code>documentation</code>",
+        "comment": "Pour des résultats optimaux, activez les outils de recherche et fournissez une URL directe vers la source si possible. Très efficace pour les vidéos YouTube et les articles de blog.",
+        "versions": [
+          {
+            "id": "gen_summary_card_v1",
+            "name": "Standard",
+            "content": "**Mission :** Générer une fiche synthétique standardisée pour le document fourni, en utilisant la recherche internet pour compléter les métadonnées manquantes.\n\n**Processus Opérationnel :**\n\n1.  **Recherche Internet (Obligatoire) :**\n    *   Utilise la recherche pour trouver la source originale du document (vidéo, podcast, article).\n    *   Récupère les métadonnées officielles : titre complet, date de publication exacte, intervenants, plateforme de diffusion.\n\n2.  **Extraction et Rédaction :**\n    *   Extrais les informations requises à partir de tes recherches et du texte.\n    *   Rédige un résumé concis et informatif mettant en évidence les idées et thèmes principaux.\n\n**Livrable Final (Format Impératif) :**\n*   Structure la sortie en suivant EXACTEMENT le modèle ci-dessous.\n*   Le titre doit commencer par la date au format `AAAA-MM-JJ` pour le classement.\n*   N'inclus aucune citation de recherche ou nom de fichier source.\n\n**--- DÉBUT DU MODÈLE ---**\n\nAAAA-MM-JJ - [Nom de l'intervenant principal], [Son rôle/Titre] - [Type de média]\n\n**Titre Média :** [Insérer le titre officiel et complet du média]\n**Date de publication :** [Insérer la date au format \"jour mois année\"]\n**Type de média :** [Insérer le type]\n**Intervenants :** [Insérer la liste des intervenants]\n\n**Résumé :**\n[Insérer votre résumé concis ici]\n\n**--- FIN DU MODÈLE ---**"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "category": "4. Génération de Code & Visualisation",
+    "prompts": [
+      {
+        "id": "code_gen_mindmap",
+        "icon": "🎨",
+        "title": "Générateur de Carte Mentale HTML",
+        "summary": "Convertit une analyse de texte structurée en une page HTML interactive (carte mentale).",
+        "meta": "<strong>Prérequis :</strong> Nécessite une analyse structurée en entrée.<br/><strong>Tags :</strong> <code>HTML</code>, <code>génération de code</code>, <code>carte mentale</code>",
+        "comment": "Fonctionne idéalement avec la sortie du prompt 'Synthèse Structurée (Markdown)' comme base d'entrée.",
+        "versions": [
+          {
+            "id": "code_gen_mindmap_v1",
+            "name": "Standard",
+            "content": "**Rôle :** Générateur de code expert.\n\n**Mission :** Convertir une analyse de texte structurée (nœud, branches, sous-branches) en un fichier HTML unique et autonome affichant une carte mentale interactive.\n\n**Spécifications Techniques Impératives :**\n\n1.  **HTML (Structure) :**\n    *   Utiliser une structure de listes imbriquées (`<ul>` et `<li>`) pour la hiérarchie.\n    *   Le titre général doit être une balise `<h1>`.\n    *   Chaque élément parent (contenant une liste imbriquée) doit être cliquable pour déplier/replier son contenu.\n\n2.  **CSS (Style - dans une balise `<style>`) :**\n    *   **Apparence :** Police sans-serif, couleurs contrastées, suppression des puces de liste (`list-style-type: none`).\n    *   **Lignes de Connexion :** Utiliser des pseudo-éléments `::before` et `::after` pour créer des lignes reliant visuellement les parents à leurs enfants.\n    *   **Interactivité :** Le curseur doit devenir un pointeur au survol des éléments cliquables. Un indicateur visuel (ex: `+ / -`) doit montrer l'état déplié/replié.\n\n3.  **JavaScript (Interactivité - dans une balise `<script>`) :**\n    *   **Autonomie :** Aucun framework ou librairie externe (pas de jQuery, etc.).\n    *   **Logique :** Utiliser `DOMContentLoaded`. Ajouter des écouteurs d'événements sur les éléments cliquables pour basculer une classe (ex: `.collapsed`) et modifier l'indicateur visuel.\n\n**Livrable :** Un unique bloc de code contenant l'intégralité du HTML, CSS et JavaScript."
+          }
+        ]
+      },
+      {
+        "id": "code_gen_auto_html",
+        "icon": "🏗️",
+        "title": "Structuration de Texte en HTML",
+        "summary": "Analyse un texte brut, infère sa structure et génère une page HTML interactive.",
+        "meta": "<strong>Tags :</strong> <code>analyse sémantique</code>, <code>HTML</code>, <code>génération de code</code>",
+        "comment": "Un prompt tout-en-un qui combine analyse sémantique et génération de code. Idéal pour transformer rapidement un texte brut en page web interactive.",
+        "versions": [
+          {
+            "id": "code_gen_auto_html_v1",
+            "name": "Standard",
+            "content": "**Rôle :** Analyste de contenu expert et développeur web full-stack.\n\n**Mission :** Analyser le texte brut fourni et générer un fichier HTML unique, autonome, structuré et interactif qui en présente une synthèse hiérarchique.\n\n**Processus en 3 Étapes :**\n\n**Étape 1 : Inférence des Métadonnées**\n*Analyse le texte pour extraire les informations suivantes :*\n*   **Auteur/Intervenant :** Le nom de la personne qui parle ou écrit.\n*   **Titre du Contenu :** Le titre principal du document. Si absent, synthétise un titre pertinent.\n*   **Langue :** La langue principale du texte (pour `<html>`).\n\n**Étape 2 : Analyse Sémantique et Structuration**\n*Dégage la structure logique du contenu :*\n1.  **Thèse Centrale :** L'idée ou l'argument fondamental.\n2.  **Thèmes Principaux :** Les 5 à 7 sections logiques les plus importantes.\n3.  **Contenu Détaillé :** Pour chaque thème, extrais les sous-points, arguments, citations marquantes, analogies et conclusions.\n\n**Étape 3 : Génération du Fichier HTML**\n*Construis le fichier HTML en respectant les spécifications du prompt `code_gen_mindmap_v1` :*\n*   **Carte Mentale Interactive :** Utilise la structure de listes `<ul>/<li>` imbriquées et cliquables.\n*   **Contenu Intégré :** Place la thèse centrale, les thèmes principaux, les sous-points et les citations dans la structure de la carte mentale.\n*   **Autonome :** Inclus tout le CSS et le JavaScript dans le même fichier, sans dépendances externes.\n\n**Livrable :** Un unique bloc de code HTML complet et fonctionnel."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "category": "5. Méta-Prompts & Optimisation",
+    "prompts": [
+      {
+        "id": "meta_optimizer",
+        "icon": "🔧",
+        "title": "Optimiseur de Prompt (Module)",
+        "summary": "Analyse et réécrit n'importe quel prompt pour en maximiser la clarté, l'efficacité et la performance.",
+        "meta": "<strong>Tags :</strong> <code>méta-prompt</code>, <code>optimisation</code>, <code>prompt engineering</code>",
+        "comment": "Collez l'une de ces versions à la fin de votre propre prompt pour l'analyser au lieu de l'exécuter. Un outil essentiel pour apprendre à mieux prompter.",
+        "versions": [
+          {
+            "id": "meta_optimizer_v1_simple",
+            "name": "Module d'Optimisation Rapide",
+            "content": "---\n**INSTRUCTION SECONDAIRE :**\nN'exécute PAS la demande ci-dessus. Ta mission est de l'analyser et de la reformuler pour la rendre plus claire, spécifique et efficace. Ensuite, explique en quelques points les améliorations que tu as apportées."
+          },
+          {
+            "id": "meta_optimizer_v2_expert",
+            "name": "Module d'Audit d'Expert",
+            "content": "---\n**FIN DE L'INVITE INITIALE. INSTRUCTION SECONDAIRE :**\nAgis maintenant en tant qu'expert en Ingénierie de Prompt. Ta mission n'est PAS de répondre à l'invite ci-dessus, mais de l'auditer et de la réécrire.\n\n**Processus :**\n1.  **Analyse Critique :** Identifie les faiblesses du prompt original (imprécision, manque de contexte, ambiguïté, etc.).\n2.  **Réécriture Stratégique :** Propose une version optimisée appliquant les meilleures pratiques (rôle, mission, contraintes, format de sortie).\n3.  **Justification :** Présente un tableau comparatif \"Avant / Après\" expliquant chaque modification et son bénéfice pour la performance du modèle."
+          },
+          {
+            "id": "meta_optimizer_v3_goal",
+            "name": "Module d'Alignement sur Objectif",
+            "content": "---\n**INSTRUCTION D'OPTIMISATION :**\nNe réponds PAS à la demande ci-dessus. Ta tâche est de l'optimiser pour qu'elle atteigne mieux l'objectif final que je décris ci-dessous.\n\n**Mon objectif final :** [DÉCRIRE ICI LE RÉSULTAT PRÉCIS QUE VOUS SOUHAITEZ OBTENIR]\n\n**Ta mission :**\n1.  Propose une nouvelle invite, beaucoup plus détaillée et structurée, spécifiquement conçue pour atteindre cet objectif.\n2.  Explique ensuite brièvement pourquoi ta version est plus performante pour y parvenir."
+          }
+        ]
+      }
+    ]
+  }
+];
+
+document.addEventListener('DOMContentLoaded', () => {
+    const libraryContainer = document.getElementById('prompt-library');
+    
+    // Modal elements
+    const modalBackdrop = document.getElementById('modal-backdrop');
+    const modalTitle = document.getElementById('modal-title');
+    const modalCode = document.getElementById('modal-code');
+    const copyBtn = document.getElementById('copy-btn');
+    const closeModalBtn = document.getElementById('close-modal-btn');
+    
+    let currentPromptContent = '';
+
+    // Function to render the entire library
+    function renderLibrary(data) {
+        let html = '';
+        data.forEach(category => {
+            const promptsHtml = category.prompts.map(prompt => {
+                const versionsHtml = prompt.versions.map(version => 
+                    `<button class="version-btn" data-title="${escapeHtml(prompt.title)} - ${escapeHtml(version.name)}" data-content="${escapeHtml(version.content)}">${version.name}</button>`
+                ).join('');
+
+                return `
+                    <li class="prompt-item">
+                        <div class="prompt-header collapsible">
+                            <span class="indicator">+</span>
+                            <span class="prompt-icon">${prompt.icon}</span>
+                            <span>${prompt.title}</span>
+                        </div>
+                        <div class="prompt-details collapsed-content">
+                            <p class="summary">${prompt.summary}</p>
+                            ${prompt.comment ? `<p class="comment">${prompt.comment}</p>` : ''}
+                            <div class="versions-container">
+                                ${versionsHtml}
+                            </div>
+                        </div>
+                    </li>
+                `;
+            }).join('');
+
+            html += `
+                <li class="category-item">
+                    <h2 class="category-title collapsible">
+                        <span class="indicator">+</span>
+                        <span>${category.category}</span>
+                    </h2>
+                    <ul class="prompt-list collapsed-content">
+                        ${promptsHtml}
+                    </ul>
+                </li>
+            `;
+        });
+        libraryContainer.innerHTML = html;
+    }
+    
+    // Helper to escape HTML characters
+    function escapeHtml(text) {
+        if (typeof text !== 'string') return '';
+        const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' };
+        return text.replace(/[&<>"']/g, m => map[m]);
+    }
+
+    // --- LOGIC FOR COLLAPSIBLE ACCORDION ---
+    function updateParentMaxHeight(element, change) {
+        let parent = element.parentElement.closest('.collapsed-content');
+        if (parent) {
+            const newHeight = parent.scrollHeight + change;
+            if (newHeight > 0) {
+                 parent.style.maxHeight = `${newHeight}px`;
+                 // Recursively update upwards
+                 updateParentMaxHeight(parent, change);
+            }
+        }
+    }
+    
+    // Event delegation for collapsible elements
+    libraryContainer.addEventListener('click', (e) => {
+        const header = e.target.closest('.collapsible');
+        if (!header) return;
+
+        header.classList.toggle('active');
+        const indicator = header.querySelector('.indicator');
+        const content = header.nextElementSibling;
+        
+        if (content && content.classList.contains('collapsed-content')) {
+             const currentHeight = content.scrollHeight;
+            if (content.style.maxHeight && content.style.maxHeight !== '0px') {
+                // Collapse
+                content.style.maxHeight = '0px';
+                if(indicator) indicator.textContent = '+';
+                updateParentMaxHeight(content, -currentHeight);
+            } else {
+                // Expand
+                content.style.maxHeight = currentHeight + 'px';
+                if(indicator) indicator.textContent = '×';
+                updateParentMaxHeight(content, currentHeight);
+            }
+        }
+    });
+    
+    // --- EVENT LISTENERS FOR MODAL ---
+    
+    // Event delegation for version buttons to open modal
+    libraryContainer.addEventListener('click', (e) => {
+        const versionBtn = e.target.closest('.version-btn');
+        if (!versionBtn) return;
+        
+        modalTitle.textContent = versionBtn.dataset.title;
+        currentPromptContent = versionBtn.dataset.content;
+        modalCode.textContent = currentPromptContent;
+        modalBackdrop.classList.add('visible');
+    });
+
+    // Close modal
+    function hideModal() {
+        modalBackdrop.classList.remove('visible');
+    }
+    closeModalBtn.addEventListener('click', hideModal);
+    modalBackdrop.addEventListener('click', (e) => {
+        if (e.target === modalBackdrop) {
+             hideModal();
+        }
+    });
+
+    // Copy to clipboard
+    copyBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText(currentPromptContent).then(() => {
+            const originalText = copyBtn.textContent;
+            copyBtn.textContent = 'Copié !';
+            setTimeout(() => {
+                copyBtn.textContent = originalText;
+            }, 2000);
+        }).catch(err => {
+            console.error('Erreur lors de la copie: ', err);
+            alert('La copie a échoué.');
+        });
+    });
+
+    // Initial render
+    renderLibrary(promptsData);
+});
+</script>
+
+</body>
+</html>
